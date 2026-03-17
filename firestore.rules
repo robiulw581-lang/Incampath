@@ -1,0 +1,108 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId}
+    // Fields:
+    //   - uid: string (required)
+    //   - email: string (required)
+    //   - displayName: string (optional)
+    //   - balance: number (required)
+    //   - tasksCompleted: int (required)
+    //   - level: int (required)
+    //   - referralCode: string (required)
+    //   - referredBy: string (optional)
+    //   - totalEarnings: number (optional)
+    //   - totalReferrals: int (optional)
+    //   - fcmToken: string (optional)
+    //   - role: string (optional, enum: ['user', 'admin'])
+    //   - lastCheckIn: string (optional)
+    //   - checkInStreak: int (optional)
+    //
+    // Collection: settings
+    // Document ID: global
+    // Fields:
+    //   - adReward: number
+    //   - dailyCheckInRewards: list (numbers)
+    //   - referralCommissionRate: number
+    //
+    // Collection: adHistory
+    // Document ID: {historyId} (usually uid_date)
+    // Fields:
+    //   - uid: string
+    //   - date: string
+    //   - count: int
+    //
+    // Collection: notifications
+    // Document ID: {notificationId}
+    // Fields:
+    //   - title: string
+    //   - body: string
+    //   - sentAt: string
+    //   - target: string
+    //
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "robiulw581@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'balance', 'tasksCompleted', 'level', 'referralCode']) &&
+             data.uid is string &&
+             data.email is string &&
+             data.balance is number &&
+             data.tasksCompleted is int &&
+             data.level is int &&
+             data.referralCode is string &&
+             (!('role' in data) || data.role in ['user', 'admin']) &&
+             (!('referredBy' in data) || data.referredBy is string) &&
+             (!('fcmToken' in data) || data.fcmToken is string) &&
+             (!('lastCheckIn' in data) || data.lastCheckIn is string) &&
+             (!('checkInStreak' in data) || data.checkInStreak is int);
+    }
+
+    match /users/{userId} {
+      allow read: if isAuthenticated(); // Allow reading other users for referral checks if needed, but better to restrict
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && 
+                      (!('role' in request.resource.data) || request.resource.data.role == 'user');
+      allow update: if (isOwner(userId) || isAdmin()) && isValidUser(request.resource.data) &&
+                      (isAdmin() || (request.resource.data.role == resource.data.role));
+    }
+
+    match /settings/global {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /adHistory/{historyId} {
+      allow read: if isAuthenticated() && (resource == null || resource.data.uid == request.auth.uid || isAdmin());
+      allow write: if isAuthenticated() && (request.resource.data.uid == request.auth.uid || isAdmin());
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /tasks/{taskId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+  }
+}

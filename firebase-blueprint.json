@@ -1,0 +1,97 @@
+{
+  "entities": {
+    "users": {
+      "title": "User",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "email": { "type": "string", "format": "email", "description": "User email address" },
+        "displayName": { "type": "string", "description": "User display name" },
+        "photoURL": { "type": "string", "description": "User profile photo URL" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Account creation timestamp" },
+        "balance": { "type": "number", "description": "User wallet balance" },
+        "tasksCompleted": { "type": "integer", "description": "Total tasks completed" },
+        "successRate": { "type": "number", "description": "User success rate percentage" },
+        "level": { "type": "integer", "description": "User current level" },
+        "referralCode": { "type": "string", "description": "Unique referral code for the user" },
+        "referredBy": { "type": "string", "description": "UID of the user who referred this user" },
+        "totalEarnings": { "type": "number", "description": "Total lifetime earnings" },
+        "totalReferrals": { "type": "integer", "description": "Total number of successful referrals" },
+        "fcmToken": { "type": "string", "description": "Firebase Cloud Messaging token" },
+        "role": { "type": "string", "enum": ["user", "admin"], "description": "User role" },
+        "lastCheckIn": { "type": "string", "format": "date-time", "description": "Timestamp of last daily check-in" },
+        "checkInStreak": { "type": "integer", "description": "Current consecutive check-in days (1-7)" },
+        "taskHistory": { 
+          "type": "array", 
+          "items": {
+            "type": "object",
+            "properties": {
+              "title": { "type": "string" },
+              "reward": { "type": "number" },
+              "completedAt": { "type": "string", "format": "date-time" }
+            }
+          },
+          "description": "List of completed tasks"
+        }
+      },
+      "required": ["uid", "email", "balance", "tasksCompleted", "level", "referralCode"]
+    },
+    "appSettings": {
+      "title": "App Settings",
+      "description": "Global configuration for rewards and limits",
+      "type": "object",
+      "properties": {
+        "adReward": { "type": "number", "description": "Reward amount for watching one ad" },
+        "dailyCheckInRewards": { 
+          "type": "array", 
+          "items": { "type": "number" },
+          "description": "Array of 7 rewards for the 7-day cycle"
+        },
+        "referralCommissionRate": { "type": "number", "description": "Percentage commission for referrers (e.g., 0.02 for 2%)" }
+      },
+      "required": ["adReward", "dailyCheckInRewards", "referralCommissionRate"]
+    },
+    "adHistory": {
+      "title": "Ad History",
+      "description": "Tracks ad watches per user per day",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "date": { "type": "string", "description": "YYYY-MM-DD" },
+        "count": { "type": "integer", "description": "Number of ads watched today" }
+      },
+      "required": ["uid", "date", "count"]
+    },
+    "notifications": {
+      "title": "Notification",
+      "description": "Push notifications sent to users",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "body": { "type": "string" },
+        "sentAt": { "type": "string", "format": "date-time" },
+        "target": { "type": "string", "description": "UID of target user or 'all'" }
+      },
+      "required": ["title", "body", "sentAt", "target"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "users",
+      "description": "User profile documents"
+    },
+    "/settings/global": {
+      "schema": "appSettings",
+      "description": "Global app configuration"
+    },
+    "/adHistory/{historyId}": {
+      "schema": "adHistory",
+      "description": "Daily ad watch tracking"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "notifications",
+      "description": "Notification logs"
+    }
+  }
+}
